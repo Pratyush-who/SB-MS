@@ -5,7 +5,14 @@ import com.app.ecom.dto.ProductRequest;
 import com.app.ecom.dto.ProductResponse;
 import com.app.ecom.repositories.ProductRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
 
 @Service
 @RequiredArgsConstructor
@@ -38,5 +45,41 @@ public class ProductService {
         product.setPrice(productRequest.getPrice());
         product.setStockQuantity(productRequest.getStockQuantity());
         product.setCategory(productRequest.getCategory());
+    }
+
+    public Optional<ProductResponse> updateProduct(Long id, ProductRequest productRequest) {
+        return productRepository.findById(id)
+                .map(existingProduct -> {
+                    updateProductFromRequest(existingProduct, productRequest);
+                    Product savedProd = productRepository.save(existingProduct);
+                    return mapToProductResponse(savedProd);
+                });
+    }
+
+    public List<ProductResponse> getAllProducts() {
+        return productRepository.findByActiveTrue().stream()
+                .map(this::mapToProductResponse)
+                .collect(Collectors.toList());
+    }
+
+    public void deleteProduct(Long id) {
+        Product product= productRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Product not found"));
+        product.setActive(false);
+        productRepository.delete(product);
+    }
+
+    public ResponseEntity<ProductResponse> getProductById(Long id) {
+        return productRepository.findById(id)
+                .filter(Product::getActive)
+                .map(this::mapToProductResponse)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> new ResponseEntity<>(HttpStatus.NOT_FOUND));
+    }
+
+    public List<ProductResponse> serchProduct(String keyword) {
+        return productRepository.searchProducts(keyword).strem()
+                .map(this::mapToProductResponse)
+                .collect(Collectors.toList());
     }
 }
