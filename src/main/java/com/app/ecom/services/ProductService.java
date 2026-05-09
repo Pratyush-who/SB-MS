@@ -1,6 +1,6 @@
 package com.app.ecom.services;
 
-import com.app.ecom.dto.Product;
+import com.app.ecom.models.Product;
 import com.app.ecom.dto.ProductRequest;
 import com.app.ecom.dto.ProductResponse;
 import com.app.ecom.repositories.ProductRepository;
@@ -78,7 +78,7 @@ public class ProductService {
     }
 
     public List<ProductResponse> serchProduct(String keyword) {
-        return productRepository.searchProducts(keyword).strem()
+        return productRepository.searchProducts(keyword).stream()
                 .map(this::mapToProductResponse)
                 .collect(Collectors.toList());
     }

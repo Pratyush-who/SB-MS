@@ -1,6 +1,6 @@
 package com.app.ecom.repositories;
 
-import com.app.ecom.dto.Product;
+import com.app.ecom.models.Product;
  import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
