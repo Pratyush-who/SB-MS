@@ -16,8 +16,17 @@ public class CartController {
     @PostMapping
     public ResponseEntity<String> addToCart(@RequestHeader ("X-USER_ID") String userId, @RequestBody CartItemRequest request ) {
         if(!cartService.addToCart(userId, request)){
-            ResponseEntity.badRequest().body("Invalid product or insufficient stock or user not found");
+            return ResponseEntity.badRequest().body("Invalid product or insufficient stock or user not found");
+        }
+        return ResponseEntity.ok("Item added to cart successfully");
+    }
+
+    @DeleteMapping("/items/{productId}")
+    public ResponseEntity<Void> removeFromCart(@RequestHeader ("X-USER_ID") String userId, @PathVariable String productId) {
+        if(!cartService.deleteItemFromCart(userId, productId)){
+            return ResponseEntity.badRequest().build();
         }
         return ResponseEntity.ok().build();
     }
+
 }
