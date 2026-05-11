@@ -7,13 +7,18 @@ import com.app.ecom.models.User;
 import com.app.ecom.repositories.CartItemRepo;
 import com.app.ecom.repositories.ProductRepository;
 import com.app.ecom.repositories.UserRepository;
+import lombok.NoArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
+import java.util.List;
 import java.util.Optional;
 
 @Service
+@NoArgsConstructor
 public class CartService {
+
     @Autowired
     private ProductRepository productRepository;
 
@@ -28,15 +33,6 @@ public class CartService {
             return false;
         }
 
-        Optional<Product> productOpt = productRepository.findById(request.getProductId());
-        if (productOpt.isEmpty()) {
-            return false;
-        }
-        Product product = productOpt.get();
-        if (product.getStockQuantity() == null || product.getStockQuantity() < request.getQuantity()) {
-            return false;
-        }
-
         Long parsedUserId;
         try {
             parsedUserId = Long.valueOf(userId);
@@ -45,28 +41,32 @@ public class CartService {
         }
 
         Optional<User> userOpt = userRepository.findById(parsedUserId);
-        if (userOpt.isEmpty()) {
+        Optional<Product> productOpt = productRepository.findById(request.getProductId());
+        if (userOpt.isEmpty() || productOpt.isEmpty()) {
             return false;
         }
 
         User user = userOpt.get();
+        Product product = productOpt.get();
+        if (product.getPrice() == null || product.getStockQuantity() == null || product.getStockQuantity() < request.getQuantity()) {
+            return false;
+        }
+
         CartItem existingCartItem = cartItemRepo.findByUserAndProduct(user, product);
         if (existingCartItem != null) {
-            //update the qty
             int newQuantity = existingCartItem.getQuantity() + request.getQuantity();
             if (product.getStockQuantity() < newQuantity) {
                 return false;
             }
             existingCartItem.setQuantity(newQuantity);
-            existingCartItem.setPrice(product.getPrice().multiply(new java.math.BigDecimal(newQuantity)));
+            existingCartItem.setPrice(product.getPrice().multiply(BigDecimal.valueOf(newQuantity)));
             cartItemRepo.save(existingCartItem);
-        }
-        else{
+        } else {
             CartItem cartItem = new CartItem();
             cartItem.setUser(user);
             cartItem.setProduct(product);
             cartItem.setQuantity(request.getQuantity());
-            cartItem.setPrice(product.getPrice().multiply(new java.math.BigDecimal(request.getQuantity())));
+            cartItem.setPrice(product.getPrice().multiply(BigDecimal.valueOf(request.getQuantity())));
             cartItemRepo.save(cartItem);
         }
         return true;
@@ -82,24 +82,36 @@ public class CartService {
             return false;
         }
 
-        Optional<Product> productOpt = productRepository.findById(parsedProductId);
-        if (productOpt.isEmpty()) {
-            return false;
-        }
-
         Optional<User> userOpt = userRepository.findById(parsedUserId);
-        if (userOpt.isEmpty()) {
+        Optional<Product> productOpt = productRepository.findById(parsedProductId);
+        if (userOpt.isEmpty() || productOpt.isEmpty()) {
             return false;
         }
 
-        User user = userOpt.get();
-        Product product = productOpt.get();
-        CartItem cartItem = cartItemRepo.findByUserAndProduct(user, product);
+        CartItem cartItem = cartItemRepo.findByUserAndProduct(userOpt.get(), productOpt.get());
         if (cartItem == null) {
             return false;
         }
 
         cartItemRepo.delete(cartItem);
         return true;
+    }
+
+    public List<CartItem> getCartItems(String userId) {
+        final Long parsedUserId;
+        try {
+            parsedUserId = Long.valueOf(userId);
+        } catch (NumberFormatException ex) {
+            return List.of();
+        }
+
+        return userRepository.findById(parsedUserId)
+                .map(cartItemRepo::findByUser)
+                .orElse(List.of());
+    }
+
+    public void clearCart(String userId) {
+        userRepository.findById(Long.valueOf(userId)).ifPresent(user ->
+                cartItemRepo.deleteByUser(user));
     }
 }
